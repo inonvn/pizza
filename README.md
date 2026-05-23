@@ -1,3 +1,3 @@
 # pizza game
-![System Flow](doc/imge.png)
+![System Flow](doc/imge.PNG)
 
