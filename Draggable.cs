@@ -44,6 +44,14 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
         return GetRootSpawnedItem() != null;
     }
 
+    private bool CanDrag()
+    {
+        if (GameManager.instance == null) return false;
+        if (IsInSpareSlots()) return true;
+
+        return false;
+    }
+
     #region World Space Drag (for Colliders) - DEPRECATED (Centralized in GameManager)
     // Legacy mouse handlers removed to prevent double-drag conflicts with GameManager centralized dragging
     #endregion
@@ -57,11 +65,9 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
             Debug.Log("OnBeginDrag: Ignored drag because GameManager.instance is null.");
             return;
         }
-        GameObject rootSpawned = GetRootSpawnedItem();
-        if (rootSpawned == null)
+        if (!CanDrag())
         {
-            Debug.Log($"OnBeginDrag: Ignored drag because {gameObject.name} (or its parents) is not in spawnedSpareItems. " +
-                      $"List size: {GameManager.instance.spawnedSpareItems.Count}");
+            Debug.Log($"OnBeginDrag: Ignored drag because {gameObject.name} is not draggable.");
             return;
         }
         if (rb3D != null)
@@ -76,15 +82,12 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
         }
 
         originalPosition = rectTransform != null ? rectTransform.position : transform.position;
-        if (GameManager.instance != null)
-        {
-            GameManager.instance.DragItem(gameObject);
-        }
+        GameManager.instance.DragItem(gameObject);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (GameManager.instance == null || !IsInSpareSlots())
+        if (GameManager.instance == null || GameManager.instance.draggedItem != gameObject)
             return;
 
         if (rectTransform != null)
@@ -108,7 +111,6 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        
         if (rb3D != null) rb3D.isKinematic = wasKinematic3D;
         if (rb2D != null) rb2D.isKinematic = wasKinematic2D;
         if (GameManager.instance != null && GameManager.instance.draggedItem == gameObject)
@@ -135,16 +137,30 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
 
         bool isValidGrid = GameManager.instance.gridCoordinates.Contains(targetGridPos);
         bool isOccupied = GameManager.instance.placedItems.ContainsKey(targetGridPos) && 
-                          GameManager.instance.placedItems[targetGridPos] != null;
+                          GameManager.instance.placedItems[targetGridPos] != null &&
+                          GameManager.instance.placedItems[targetGridPos] != gameObject;
 
         if (isValidGrid && !isOccupied)
         {
-        
+            // Remove from old slot if it was previously placed
+            Vector3Int oldKey = new Vector3Int(-999, -999, -999);
+            foreach (var kvp in GameManager.instance.placedItems)
+            {
+                if (kvp.Value == gameObject)
+                {
+                    oldKey = kvp.Key;
+                    break;
+                }
+            }
+            if (oldKey.x != -999)
+            {
+                GameManager.instance.placedItems.Remove(oldKey);
+            }
+
             transform.position = new Vector3(targetX * spacing, targetY * spacing, originalPosition.z);
             transform.localRotation = Quaternion.identity;
             GameManager.instance.placedItems[targetGridPos] = gameObject;
 
-           
             GameObject rootSpawned = GetRootSpawnedItem();
             if (rootSpawned != null)
             {
@@ -152,10 +168,21 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
             }
 
             GameManager.instance.DropItem();
+            GameManager.instance.CheckNeighborsAndMerge(targetGridPos);
+            GameManager.instance.CheckGridFull();
+
+            // If all spare items have been placed, spawn a new batch
+            if (GameManager.instance.spawnedSpareItems.Count == 0)
+            {
+                SaveGrid saveGrid = GameManager.instance.GetComponent<SaveGrid>();
+                if (saveGrid != null)
+                {
+                    saveGrid.SpawnSpareItems();
+                }
+            }
         }
         else
         {
-           
             transform.DOMove(originalPosition, 0.25f).OnComplete(() =>
             {
                 GameManager.instance.DropItem();
@@ -169,10 +196,10 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
         return initialZDistance;
     }
 
-    public void StartCentralizedDrag(Vector3 mouseWorldPos)
+    public bool StartCentralizedDrag(Vector3 mouseWorldPos)
     {
-        if (GameManager.instance == null || !IsInSpareSlots())
-            return;
+        if (GameManager.instance == null || !CanDrag())
+            return false;
 
         if (mainCamera == null) mainCamera = Camera.main;
 
@@ -192,6 +219,7 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
         dragOffset = transform.position - mouseWorldPos;
         
         GameManager.instance.DragItem(gameObject);
+        return true;
     }
 
     public void UpdateCentralizedDrag(Vector3 mouseWorldPos)

@@ -16,5 +16,7 @@ MonoBehaviour:
   BoardSizeY: 4
   PizzaType:
   - {fileID: 6154788606960070645, guid: f4c205a7cf0a3bd45b6eb12731356ab9, type: 3}
+  - {fileID: 6154788606960070645, guid: e80e8b7c92587394fb4fadda2cc8fbb1, type: 3}
+  - {fileID: 6154788606960070645, guid: 30b7056a6cec96d4ea7146319376c821, type: 3}
   Grid: {fileID: 2733866006201654336, guid: 7c6315bce89b4674894fd311e91d97f4, type: 3}
   GridSpacing: 5

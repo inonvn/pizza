@@ -42,7 +42,7 @@ public class SaveGrid : MonoBehaviour
         for (int i = 0; i < GameManager.instance.gameSettings.BoardSizeX; i++)
         {
             var vec = new Vector3Int(i, -1, 0);
-            var spawnPos = new Vector3(i * spacing, -2 * spacing, 0);
+            var spawnPos = new Vector3(i * spacing, -1f * spacing, 0);
             var e = GameObject.Instantiate(Grid, spawnPos, Quaternion.identity, GameManager.instance.spawnHere.transform);
             e.transform.rotation = Quaternion.identity;
             e.transform.localRotation = Quaternion.identity;
@@ -88,6 +88,12 @@ public class SaveGrid : MonoBehaviour
                 if (dragComp == null)
                 {
                     dragComp = spawned.AddComponent<Draggable>();
+                }
+
+                PizzaCheck checkComp = spawned.GetComponent<PizzaCheck>();
+                if (checkComp == null)
+                {
+                    checkComp = spawned.AddComponent<PizzaCheck>();
                 }
                 
                 // Ensure there is a collider so dragging works
