@@ -27,6 +27,8 @@ public class SaveGrid : MonoBehaviour
                 var vec = new Vector3Int(i, j, 0);
                 var spawnPos = new Vector3(i * spacing, j * spacing, 0);
                 var e = GameObject.Instantiate(Grid, spawnPos, Quaternion.identity, GameManager.instance.spawnHere.transform);
+                e.transform.rotation = Quaternion.identity;
+                e.transform.localRotation = Quaternion.identity;
                 
                 if (GameManager.instance != null)
                 {
@@ -40,8 +42,10 @@ public class SaveGrid : MonoBehaviour
         for (int i = 0; i < GameManager.instance.gameSettings.BoardSizeX; i++)
         {
             var vec = new Vector3Int(i, -1, 0);
-            var spawnPos = new Vector3(i * spacing, -1 * spacing, 0);
-            var e = GameObject.Instantiate(Grid, spawnPos, Quaternion.identity);
+            var spawnPos = new Vector3(i * spacing, -2 * spacing, 0);
+            var e = GameObject.Instantiate(Grid, spawnPos, Quaternion.identity, GameManager.instance.spawnHere.transform);
+            e.transform.rotation = Quaternion.identity;
+            e.transform.localRotation = Quaternion.identity;
 
             if (GameManager.instance != null)
             {
@@ -69,25 +73,59 @@ public class SaveGrid : MonoBehaviour
         if (settings.PizzaType == null || settings.PizzaType.Count == 0) return;
 
         float spacing = settings.GridSpacing;
-        // Spawn a random item from PizzaType on each spare slot
+      
         foreach (var pos in GameManager.instance.spareCoordinates)
         {
             GameObject randomPrefab = settings.PizzaType[Random.Range(0, settings.PizzaType.Count)];
             if (randomPrefab != null)
             {
                 Vector3 spawnPos = new Vector3(pos.x * spacing, pos.y * spacing, pos.z * spacing);
-                GameObject spawned = GameObject.Instantiate(randomPrefab, spawnPos, Quaternion.identity);
+                GameObject spawned = GameObject.Instantiate(randomPrefab, spawnPos, Quaternion.identity, GameManager.instance.spawnHere.transform);
+                spawned.transform.rotation = Quaternion.identity;
+                spawned.transform.localRotation = Quaternion.identity;
                 
-                // Add Draggable component to the spawned item
-                if (spawned.GetComponent<Draggable>() == null)
+                Draggable dragComp = spawned.GetComponent<Draggable>();
+                if (dragComp == null)
                 {
-                    spawned.AddComponent<Draggable>();
+                    dragComp = spawned.AddComponent<Draggable>();
                 }
                 
                 // Ensure there is a collider so dragging works
                 if (spawned.GetComponent<Collider2D>() == null && spawned.GetComponent<Collider>() == null)
                 {
                     spawned.AddComponent<BoxCollider2D>();
+                }
+
+                // Add DragProxy to all children with colliders (2D & 3D) so mouse events bubble up to Draggable
+                foreach (var col in spawned.GetComponentsInChildren<Collider>(true))
+                {
+                    if (col.gameObject != spawned)
+                    {
+                        var proxy = col.gameObject.GetComponent<DragProxy>();
+                        if (proxy == null) proxy = col.gameObject.AddComponent<DragProxy>();
+                        proxy.targetDraggable = dragComp;
+                    }
+                }
+                foreach (var col2D in spawned.GetComponentsInChildren<Collider2D>(true))
+                {
+                    if (col2D.gameObject != spawned)
+                    {
+                        var proxy = col2D.gameObject.GetComponent<DragProxy>();
+                        if (proxy == null) proxy = col2D.gameObject.AddComponent<DragProxy>();
+                        proxy.targetDraggable = dragComp;
+                    }
+                }
+
+                // Freeze rotation if rigidbodies exist
+                Rigidbody2D rb2d = spawned.GetComponent<Rigidbody2D>();
+                if (rb2d != null)
+                {
+                    rb2d.constraints = rb2d.constraints | RigidbodyConstraints2D.FreezeRotation;
+                }
+                Rigidbody rb = spawned.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.constraints = rb.constraints | RigidbodyConstraints.FreezeRotation;
                 }
 
                 GameManager.instance.spawnedSpareItems.Add(spawned);

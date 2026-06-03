@@ -9,63 +9,72 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
     private RectTransform rectTransform;
     private Canvas canvas;
     private Vector3 originalPosition;
+    private float initialZDistance;
+    private bool wasKinematic3D;
+    private bool wasKinematic2D;
+    private Rigidbody rb3D;
+    private Rigidbody2D rb2D;
 
     void Awake()
     {
         mainCamera = Camera.main;
         rectTransform = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
+        rb3D = GetComponent<Rigidbody>();
+        rb2D = GetComponent<Rigidbody2D>();
     }
 
-    #region World Space Drag (for Colliders)
-
-    void OnMouseDown()
+    private GameObject GetRootSpawnedItem()
     {
-        // Ignore world drag if clicking on UI elements
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            return;
-
-        if (mainCamera == null) mainCamera = Camera.main;
-
-        originalPosition = transform.position;
-        dragOffset = transform.position - GetMouseWorldPosition();
-        if (GameManager.instance != null)
+        if (GameManager.instance == null) return null;
+        Transform current = transform;
+        while (current != null)
         {
-            GameManager.instance.DragItem(gameObject);
+            if (GameManager.instance.spawnedSpareItems.Contains(current.gameObject))
+            {
+                return current.gameObject;
+            }
+            current = current.parent;
         }
+        return null;
     }
 
-    void OnMouseDrag()
+    private bool IsInSpareSlots()
     {
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject() && GameManager.instance.draggedItem != gameObject)
-            return;
-
-        if (mainCamera == null) mainCamera = Camera.main;
-
-        transform.position = GetMouseWorldPosition() + dragOffset;
+        return GetRootSpawnedItem() != null;
     }
 
-    void OnMouseUp()
-    {
-        if (GameManager.instance != null && GameManager.instance.draggedItem == gameObject)
-        {
-            TryPlaceObject();
-        }
-    }
-
-    private Vector3 GetMouseWorldPosition()
-    {
-        Vector3 mousePoint = Input.mousePosition;
-        mousePoint.z = mainCamera.WorldToScreenPoint(transform.position).z;
-        return mainCamera.ScreenToWorldPoint(mousePoint);
-    }
-
+    #region World Space Drag (for Colliders) - DEPRECATED (Centralized in GameManager)
+    // Legacy mouse handlers removed to prevent double-drag conflicts with GameManager centralized dragging
     #endregion
 
     #region UI Space Drag (for Canvas Elements)
 
     public void OnBeginDrag(PointerEventData eventData)
     {
+        if (GameManager.instance == null)
+        {
+            Debug.Log("OnBeginDrag: Ignored drag because GameManager.instance is null.");
+            return;
+        }
+        GameObject rootSpawned = GetRootSpawnedItem();
+        if (rootSpawned == null)
+        {
+            Debug.Log($"OnBeginDrag: Ignored drag because {gameObject.name} (or its parents) is not in spawnedSpareItems. " +
+                      $"List size: {GameManager.instance.spawnedSpareItems.Count}");
+            return;
+        }
+        if (rb3D != null)
+        {
+            wasKinematic3D = rb3D.isKinematic;
+            rb3D.isKinematic = true;
+        }
+        if (rb2D != null)
+        {
+            wasKinematic2D = rb2D.isKinematic;
+            rb2D.isKinematic = true;
+        }
+
         originalPosition = rectTransform != null ? rectTransform.position : transform.position;
         if (GameManager.instance != null)
         {
@@ -75,6 +84,9 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (GameManager.instance == null || !IsInSpareSlots())
+            return;
+
         if (rectTransform != null)
         {
             if (canvas == null) canvas = GetComponentInParent<Canvas>();
@@ -91,10 +103,14 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
                 }
             }
         }
+        transform.localRotation = Quaternion.identity;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        
+        if (rb3D != null) rb3D.isKinematic = wasKinematic3D;
+        if (rb2D != null) rb2D.isKinematic = wasKinematic2D;
         if (GameManager.instance != null && GameManager.instance.draggedItem == gameObject)
         {
             TryPlaceObject();
@@ -113,7 +129,6 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
             spacing = GameManager.instance.gameSettings.GridSpacing;
         }
 
-        // Round to nearest integer coordinates on the grid
         int targetX = Mathf.RoundToInt(transform.position.x / spacing);
         int targetY = Mathf.RoundToInt(transform.position.y / spacing);
         Vector3Int targetGridPos = new Vector3Int(targetX, targetY, 0);
@@ -124,25 +139,77 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
 
         if (isValidGrid && !isOccupied)
         {
-            // Snap to target cell center
+        
             transform.position = new Vector3(targetX * spacing, targetY * spacing, originalPosition.z);
+            transform.localRotation = Quaternion.identity;
             GameManager.instance.placedItems[targetGridPos] = gameObject;
 
-            // Remove from spare items list
-            if (GameManager.instance.spawnedSpareItems.Contains(gameObject))
+           
+            GameObject rootSpawned = GetRootSpawnedItem();
+            if (rootSpawned != null)
             {
-                GameManager.instance.spawnedSpareItems.Remove(gameObject);
+                GameManager.instance.spawnedSpareItems.Remove(rootSpawned);
             }
 
             GameManager.instance.DropItem();
         }
         else
         {
-            // Return to original position with DOTween transition animation
+           
             transform.DOMove(originalPosition, 0.25f).OnComplete(() =>
             {
                 GameManager.instance.DropItem();
             });
+            transform.DOLocalRotate(Vector3.zero, 0.25f);
         }
     }
+
+    public float GetInitialZDistance()
+    {
+        return initialZDistance;
+    }
+
+    public void StartCentralizedDrag(Vector3 mouseWorldPos)
+    {
+        if (GameManager.instance == null || !IsInSpareSlots())
+            return;
+
+        if (mainCamera == null) mainCamera = Camera.main;
+
+        if (rb3D != null)
+        {
+            wasKinematic3D = rb3D.isKinematic;
+            rb3D.isKinematic = true;
+        }
+        if (rb2D != null)
+        {
+            wasKinematic2D = rb2D.isKinematic;
+            rb2D.isKinematic = true;
+        }
+
+        originalPosition = transform.position;
+        initialZDistance = mainCamera.WorldToScreenPoint(transform.position).z;
+        dragOffset = transform.position - mouseWorldPos;
+        
+        GameManager.instance.DragItem(gameObject);
+    }
+
+    public void UpdateCentralizedDrag(Vector3 mouseWorldPos)
+    {
+        transform.position = mouseWorldPos + dragOffset;
+        transform.localRotation = Quaternion.identity;
+    }
+
+    public void EndCentralizedDrag()
+    {
+        if (rb3D != null) rb3D.isKinematic = wasKinematic3D;
+        if (rb2D != null) rb2D.isKinematic = wasKinematic2D;
+
+        TryPlaceObject();
+    }
+}
+
+public class DragProxy : MonoBehaviour
+{
+    public Draggable targetDraggable;
 }
