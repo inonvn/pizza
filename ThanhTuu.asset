@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dcb7482efb278f14e82f1b5063ca0b47, type: 3}
+  m_Name: ThanhTuu
+  m_EditorClassIdentifier: Assembly-CSharp::ThanhTuu
+  TuuList:
+  - ID: 
+    type: 0
+    soLuong: 0
+    Icon: {fileID: 0}
+    Text: 
+  DayRewardList:
+  - Icon: {fileID: 21300000, guid: 6c8a33c16e94796408b7175d20e2043e, type: 3}
+    SoLuong: 50
+    type: 0
+  - Icon: {fileID: 21300000, guid: bbdbc58374bb91e4ab9133b86c134bf4, type: 3}
+    SoLuong: 1
+    type: 2
+  - Icon: {fileID: 21300000, guid: 40b76e0fa3ae8b041ba0ad7c21cd3e93, type: 3}
+    SoLuong: 100
+    type: 0
+  - Icon: {fileID: 21300000, guid: 80f8f0d3f0bd15a46a12b608b3acbcb5, type: 3}
+    SoLuong: 1
+    type: 1
+  - Icon: {fileID: 21300000, guid: 2d4f7a4d5d322dc46ad5a1b5b3c7fd52, type: 3}
+    SoLuong: 150
+    type: 0
+  - Icon: {fileID: 21300000, guid: 1c5e171f5949630489d74da376de248f, type: 3}
+    SoLuong: 2
+    type: 1
+  - Icon: {fileID: 21300000, guid: 7c79063b310f4c14ab84724c4ae055e2, type: 3}
+    SoLuong: 300
+    type: 0

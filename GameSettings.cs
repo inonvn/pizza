@@ -12,4 +12,8 @@ public class GameSettings : ScriptableObject
     public List<GameObject> PizzaType;
     public GameObject Grid;
     public float GridSpacing = 2.0f;
+
+    [Header("Player Progress")]
+    public int GoldPerEat = 10;
+    public int XPPerPlace = 5;
 }

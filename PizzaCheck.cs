@@ -37,7 +37,13 @@ public class PizzaCheck : MonoBehaviour
 
         if (count >= 6)
         {
-            
+            // Award gold for eating a complete pizza
+            if (PlayerProgressManager.instance != null && GameManager.instance != null && GameManager.instance.gameSettings != null)
+            {
+                PlayerProgressManager.instance.AddGold(GameManager.instance.gameSettings.GoldPerEat);
+                PlayerProgressManager.instance.IncrementPizzasEaten();
+            }
+
             if (GameManager.instance != null)
             {
                 Vector3Int foundKey = new Vector3Int(-999, -999, -999);

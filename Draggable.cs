@@ -22,6 +22,9 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
         canvas = GetComponentInParent<Canvas>();
         rb3D = GetComponent<Rigidbody>();
         rb2D = GetComponent<Rigidbody2D>();
+        
+        if (rb3D != null) rb3D.isKinematic = true;
+        if (rb2D != null) rb2D.isKinematic = true;
     }
 
     private GameObject GetRootSpawnedItem()
@@ -161,6 +164,13 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
             transform.localRotation = Quaternion.identity;
             GameManager.instance.placedItems[targetGridPos] = gameObject;
 
+            // Award XP and increment placed items count
+            if (PlayerProgressManager.instance != null && GameManager.instance != null && GameManager.instance.gameSettings != null)
+            {
+                PlayerProgressManager.instance.AddXP(GameManager.instance.gameSettings.XPPerPlace);
+                PlayerProgressManager.instance.IncrementItemsPlaced();
+            }
+
             GameObject rootSpawned = GetRootSpawnedItem();
             if (rootSpawned != null)
             {
@@ -169,7 +179,6 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
 
             GameManager.instance.DropItem();
             GameManager.instance.CheckNeighborsAndMerge(targetGridPos);
-            GameManager.instance.CheckGridFull();
 
             // If all spare items have been placed, spawn a new batch
             if (GameManager.instance.spawnedSpareItems.Count == 0)
@@ -180,6 +189,7 @@ public class Draggable : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDra
                     saveGrid.SpawnSpareItems();
                 }
             }
+            PlayerProgressManager.instance.AddXP(GameManager.instance.gameSettings.XPPerPlace);
         }
         else
         {

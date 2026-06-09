@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
+using DG.Tweening;
 
 public enum GameState
 {
@@ -31,6 +32,9 @@ public class GameManager : MonoBehaviour
     
     public Dictionary<Vector3Int, GameObject> placedItems = new Dictionary<Vector3Int, GameObject>();
     public GameObject spawnHere;
+    public GameObject Paratic;
+    public GameObject Thanhtuu;
+    public GameObject DayReward;
    
     private void Awake()
     {
@@ -194,21 +198,38 @@ public class GameManager : MonoBehaviour
             name = name.Substring(0, cloneIdx);
         return name.Trim();
     }
-
     public void CheckNeighborsAndMerge(Vector3Int pos)
     {
-        if (!placedItems.ContainsKey(pos)) return;
+        StartCoroutine(CheckNeighborsAndMergeCoroutine(pos));
+    }
+
+    private System.Collections.IEnumerator CheckNeighborsAndMergeCoroutine(Vector3Int pos)
+    {
+        yield return new WaitForSeconds(1.0f);
+
+        if (!placedItems.ContainsKey(pos))
+        {
+            CheckGridFull();
+            yield break;
+        }
         GameObject placed = placedItems[pos];
-        if (placed == null) return;
+        if (placed == null)
+        {
+            CheckGridFull();
+            yield break;
+        }
 
         PizzaCheck placedCheck = placed.GetComponent<PizzaCheck>();
-        if (placedCheck == null) return;
+        if (placedCheck == null)
+        {
+            CheckGridFull();
+            yield break;
+        }
 
         string placedType = GetPizzaTypeName(placed);
         int maxSlices = placedCheck.slices.Count;
         int currentCount = placedCheck.GetActiveCount();
 
-        // 4 adjacent directions: up, down, left, right
         Vector3Int[] directions = new Vector3Int[]
         {
             new Vector3Int(0, 1, 0),
@@ -217,12 +238,11 @@ public class GameManager : MonoBehaviour
             new Vector3Int(1, 0, 0)
         };
 
-        // Collect neighbors to remove after iteration (can't modify dict during foreach)
         List<Vector3Int> toRemove = new List<Vector3Int>();
 
         foreach (var dir in directions)
         {
-            if (currentCount >= maxSlices) break; // Already full
+            if (currentCount >= maxSlices) break;
 
             Vector3Int neighborPos = pos + dir;
             if (!placedItems.ContainsKey(neighborPos)) continue;
@@ -230,7 +250,6 @@ public class GameManager : MonoBehaviour
             GameObject neighbor = placedItems[neighborPos];
             if (neighbor == null || neighbor == placed) continue;
 
-            // Check same type
             string neighborType = GetPizzaTypeName(neighbor);
             if (neighborType != placedType) continue;
 
@@ -240,36 +259,77 @@ public class GameManager : MonoBehaviour
             int neighborCount = neighborCheck.GetActiveCount();
             if (neighborCount <= 0) continue;
 
-            // Calculate how many slices we still need
             int needed = maxSlices - currentCount;
-            // Take from neighbor
             int transfer = Mathf.Min(needed, neighborCount);
 
-            currentCount += transfer;
-            neighborCount -= transfer;
+            for (int t = 0; t < transfer; t++)
+            {
+                int neighborSliceIdx = neighborCount - 1;
+                int placedSliceIdx = currentCount;
 
-            placedCheck.SetActiveCount(currentCount);
-            neighborCheck.SetActiveCount(neighborCount);
+                if (neighborSliceIdx >= 0 && neighborSliceIdx < neighborCheck.slices.Count &&
+                    placedSliceIdx >= 0 && placedSliceIdx < placedCheck.slices.Count)
+                {
+                    GameObject sliceToAnimate = neighborCheck.slices[neighborSliceIdx];
+                    GameObject targetSliceSlot = placedCheck.slices[placedSliceIdx];
 
-            // If neighbor is empty, mark for removal
+                    if (sliceToAnimate != null && targetSliceSlot != null)
+                    {
+                        Vector3 origLocalPos = sliceToAnimate.transform.localPosition;
+                        Quaternion origLocalRot = sliceToAnimate.transform.localRotation;
+                        Transform origParent = sliceToAnimate.transform.parent;
+
+                        Vector3 targetWorldPos = targetSliceSlot.transform.position;
+                        Quaternion targetWorldRot = targetSliceSlot.transform.rotation;
+
+                        // Visually show slice moving
+                        bool animationComplete = false;
+                        sliceToAnimate.transform.DOMove(targetWorldPos, 0.4f);
+                        sliceToAnimate.transform.DORotateQuaternion(targetWorldRot, 0.4f).OnComplete(() => {
+                            animationComplete = true;
+                        });
+
+                        yield return new WaitUntil(() => animationComplete);
+
+                        sliceToAnimate.SetActive(false);
+                        sliceToAnimate.transform.parent = origParent;
+                        sliceToAnimate.transform.localPosition = origLocalPos;
+                        sliceToAnimate.transform.localRotation = origLocalRot;
+
+                        targetSliceSlot.SetActive(true);
+                    }
+                }
+
+                currentCount++;
+                neighborCount--;
+            }
+
             if (neighborCount <= 0)
             {
                 toRemove.Add(neighborPos);
             }
         }
 
-        // Remove empty neighbors
         foreach (var key in toRemove)
         {
             if (placedItems.ContainsKey(key))
             {
                 GameObject emptyPizza = placedItems[key];
                 placedItems.Remove(key);
-                if (emptyPizza != null)
-                {
-                    Destroy(emptyPizza);
-                }
+                    if (emptyPizza != null)
+                    {
+                        Vector3 pos1 = emptyPizza.transform.position;
+                        Destroy(emptyPizza);
+                        if (Paratic != null)
+                        {
+                            GameObject fx = Instantiate(Paratic, pos1, Quaternion.identity);
+                            Destroy(fx, 1f);
+                        }
+                    }
             }
         }
+
+        CheckGridFull();
     }
-}
+    }
+
