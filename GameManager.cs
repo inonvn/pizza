@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour
     public GameSettings gameSettings;
     public static GameManager instance;
     private GameObject Grid;
+    private UIManager UImanager;
     
     [HideInInspector]
     public GameObject draggedItem;
@@ -30,8 +31,7 @@ public class GameManager : MonoBehaviour
     
     public Dictionary<Vector3Int, GameObject> placedItems = new Dictionary<Vector3Int, GameObject>();
     public GameObject spawnHere;
-    public GameObject GameOverUI;
-    public GameObject GameStart;
+   
     private void Awake()
     {
         placedItems.Clear();
@@ -48,6 +48,7 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        UImanager = GetComponent<UIManager>();
         Grid = gameSettings.Grid;
     }
 
@@ -137,7 +138,7 @@ public class GameManager : MonoBehaviour
     }
     public void Onpress()
     {
-        GameStart.SetActive(false);
+      UImanager.  GameStart.SetActive(false);
         var e = GetComponent<SaveGrid>();
 
         e.SpawnGrid(Grid);
@@ -174,7 +175,7 @@ public class GameManager : MonoBehaviour
     }   
     public void GameOver()
     {
-        GameOverUI.SetActive(true);
+       UImanager. GameOverUI.SetActive(true);
     }    
     public void DragItem(GameObject item)
     {

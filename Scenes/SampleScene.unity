@@ -1831,8 +1831,6 @@ MonoBehaviour:
   spareObjects: []
   spawnedSpareItems: []
   spawnHere: {fileID: 1228282015}
-  GameOverUI: {fileID: 1816307723}
-  GameStart: {fileID: 2004303318}
 --- !u!4 &2019558032
 Transform:
   m_ObjectHideFlags: 0
