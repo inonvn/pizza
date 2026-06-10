@@ -3,6 +3,7 @@ using UnityEngine.UIElements;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using DG.Tweening;
+using System;
 
 public enum GameState
 {
@@ -148,10 +149,24 @@ public class GameManager : MonoBehaviour
         e.SpawnGrid(Grid);
         SetState(GameState.InGame);
     }
-
+    public event Action AfterStart;
+    public event Action InGame;
+    public event Action reset;
+    public event Action EndGame;
     public void SetState(GameState newState)
     {
         currentState = newState;
+        switch (currentState )
+        {
+            case GameState.AfterStart:
+                break;
+            case GameState.InGame:
+                break;
+                case GameState.Pause:
+                break;
+            case GameState.EndGame:
+                break;
+        }    
         Debug.Log($"[GameManager] State changed to: {currentState}");
     }
 

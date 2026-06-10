@@ -1,5 +1,7 @@
 using System;
+
 using System.Collections.Generic;
+using DG.Tweening;
 using System.IO;
 using TMPro;
 using UnityEngine;
@@ -71,6 +73,24 @@ public class UIManager : MonoBehaviour
         PlayerPrefs.Save();
 
         // Close reward UI and show locked version
+        // Animate the day reward panel shrinking before hiding
+        if (Dayreward != null)
+        {
+            var rt = Dayreward.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                rt.DOScale(Vector3.one * 0.5f, 0.3f)
+                    .SetEase(Ease.OutBack)
+                    .OnComplete(() => {
+                        Dayreward.gameObject.SetActive(false);
+                        DayrewardCha.gameObject.SetActive(true);
+                        // Reset scale for next open
+                        rt.localScale = Vector3.one;
+                    });
+                return; // exit early; the rest will run in OnComplete
+            }
+        }
+        // Fallback if animation not possible
         Dayreward.gameObject.SetActive(false);
         DayrewardCha.gameObject.SetActive(true);
     }    
